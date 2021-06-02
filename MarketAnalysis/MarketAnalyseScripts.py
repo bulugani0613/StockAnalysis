@@ -29,20 +29,24 @@ else:
     print ("Successfully created the directory %s " % folderExt)
 
 #Dataframe where the summary for the stock is stored
-analysisResult = pd.DataFrame(columns = ['Stock', 'Close', '12EMA', '26EMA', 'MACDHist', 'SignalMACD', 'ADX', 'CloseSlope', '12EMASlope', '26EMASlope', 'MACDHistSlope', 'SignalMACDSlope', 'ADXSlope', 'PositiveIndicator'])
+analysisResult = pd.DataFrame(columns = ['Stock', 'Close', '12EMA', '26EMA', 'MACDHist', 'SignalMACD', 'ADX', 'RSI', 'CloseSlope', '12EMASlope', '26EMASlope', 'MACDHistSlope', 'SignalMACDSlope', 'ADXSlope', 'PositiveIndicator'])
 
 
 #For each stock the data is retrieved, analyzed and result stored in the stocknameYYYYMMDDHHMMSS.csv file. Summary stored in analysisResultYYYYMMDDHHMMSS.csv
 historyDuration = "5mo"
 
+def rma(x, n, y0):
+    a = (n-1) / n
+    ak = a**np.arange(len(x)-1, -1, -1)
+    return np.r_[np.full(n, np.nan), y0, np.cumsum(ak * x) / ak / n + y0 * a**np.arange(1, len(x)+1)]
 
 #For each stock the data is retrieved and analysis is performed. 
 for stock in stocklist:
     print('Processing ', stock)
     try:
         ticker = yfinance.Ticker(stock)
-        df = ticker.history(period = historyDuration)
-
+        origdf = ticker.history(period = historyDuration)
+        df = origdf.copy()
         df['12EMA'] = df.Close.ewm(span=12, adjust=False).mean()
         df['26EMA'] = df.Close.ewm(span=26, adjust=False).mean()
         df['MACDHist'] = df['12EMA'] - df['26EMA'] 
@@ -57,7 +61,7 @@ for stock in stocklist:
         # TR
         alpha = 1/13
 
-        adxdf = df.copy()
+        adxdf = origdf.copy()
 
 
         adxdf['H-L'] = adxdf['High'] - adxdf['Low']
@@ -96,6 +100,20 @@ for stock in stocklist:
 
         df['ADX'] = adxdf['ADX']
         df['ADXSlope'] = df['ADX'].diff()
+        
+        
+        # Calculating RSI
+        n = 14
+        rsidf = origdf.copy()
+        rsidf['change']= rsidf['Close'].diff()
+        rsidf['gain'] = rsidf.change.mask(rsidf.change < 0, 0.0)
+        rsidf['loss'] = -rsidf.change.mask(rsidf.change > 0, -0.0)
+        rsidf['avg_gain'] = rma(rsidf.gain[n+1:].to_numpy(), n, np.nansum(rsidf.gain.to_numpy()[:n+1])/n)
+        rsidf['avg_loss'] = rma(rsidf.loss[n+1:].to_numpy(), n, np.nansum(rsidf.loss.to_numpy()[:n+1])/n)
+        rsidf['rs'] = rsidf.avg_gain / rsidf.avg_loss
+        rsidf['Rsi_14'] = 100 - (100 / (1 + rsidf.rs))
+        
+        df['RSI'] = rsidf['Rsi_14']
 
 
         df['PositiveIndicator'] = 0
@@ -105,13 +123,15 @@ for stock in stocklist:
         df['PositiveIndicator'] = df['PositiveIndicator'] + df['MACDHistSlope'].apply(lambda x: 1 if x > 0 else 0)
         df['PositiveIndicator'] = df['PositiveIndicator'] + df['SignalMACDSlope'].apply(lambda x: 1 if x > 0 else 0)
         df['PositiveIndicator'] = df['PositiveIndicator'] + df['ADXSlope'].apply(lambda x: 1 if x > 0 else 0)
+        df['PositiveIndicator'] = df['PositiveIndicator'] + df['RSI'].apply(lambda x: 1 if x < 15 else 0)
 
         lastRow = df.shape[0]
         currentStockValues = df.iloc[lastRow-1:]
 
-        analysisResult = analysisResult.append( {'Stock' : stock, 'Close' : currentStockValues['Close'][0], '12EMA': currentStockValues['12EMA'][0], '26EMA': currentStockValues['26EMA'][0], 'MACDHist': currentStockValues['MACDHist'][0], 'SignalMACD': currentStockValues['SignalMACD'][0], 'CloseSlope': currentStockValues['CloseSlope'][0], 'ADX': currentStockValues['ADX'][0], '12EMASlope': currentStockValues['12EMASlope'][0], '26EMASlope': currentStockValues['26EMASlope'][0],  'MACDHistSlope': currentStockValues['MACDHistSlope'][0], 'SignalMACDSlope': currentStockValues['SignalMACDSlope'][0], 'ADXSlope': currentStockValues['ADXSlope'][0], 'PositiveIndicator' : currentStockValues['PositiveIndicator'][0]}, ignore_index = True)
+        analysisResult = analysisResult.append( {'Stock' : stock, 'Close' : currentStockValues['Close'][0], '12EMA': currentStockValues['12EMA'][0], '26EMA': currentStockValues['26EMA'][0], 'MACDHist': currentStockValues['MACDHist'][0], 'SignalMACD': currentStockValues['SignalMACD'][0], 'CloseSlope': currentStockValues['CloseSlope'][0], 'ADX': currentStockValues['ADX'][0], 'RSI': currentStockValues['RSI'][0], '12EMASlope': currentStockValues['12EMASlope'][0], '26EMASlope': currentStockValues['26EMASlope'][0],  'MACDHistSlope': currentStockValues['MACDHistSlope'][0], 'SignalMACDSlope': currentStockValues['SignalMACDSlope'][0], 'ADXSlope': currentStockValues['ADXSlope'][0], 'PositiveIndicator' : currentStockValues['PositiveIndicator'][0]}, ignore_index = True)
     except:
         print("Oops!", sys.exc_info()[0], "occurred while processing for stock ", stock, ". Proceeding to next stock")  
 
     df.to_csv("./" + folderExt + "/" +stock+str(fileExt) + ".csv")
 analysisResult.to_csv("AnalysisResult" + str(fileExt) + ".csv")
+
