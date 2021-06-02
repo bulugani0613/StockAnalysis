@@ -103,7 +103,7 @@ for stock in stocklist:
                 df.loc[idx, 'LongEMASlope'] = LongEMAValue - PrevLongEMAValue
                 df.loc[idx, 'MACDHist'] = ShortEMAValue - LongEMAValue
                 df.loc[idx, 'MACDHistSlope'] = (ShortEMAValue - LongEMAValue) - prevMACDHist
-                prevMACDHist = LongEMAValue - ShortEMAValue
+                prevMACDHist = ShortEMAValue - LongEMAValue
                 if i < (LongEMAIndex + SlowMACDIndex - 1): 
                     SlowMACDValue += LongEMAValue - ShortEMAValue
                     df.loc[idx, 'SignalMACD'] = 0
