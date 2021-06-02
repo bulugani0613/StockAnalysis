@@ -43,7 +43,7 @@ for stock in stocklist:
         df = ticker.history(period = historyDuration)
 
         df['12EMA'] = df.Close.ewm(span=12, adjust=False).mean()
-        df['26EMA'] = df.Close.ewm(span=12, adjust=False).mean()
+        df['26EMA'] = df.Close.ewm(span=26, adjust=False).mean()
         df['MACDHist'] = df['12EMA'] - df['26EMA'] 
         df['SignalMACD'] = df['MACDHist'].ewm(span=9, adjust=False).mean()
 
