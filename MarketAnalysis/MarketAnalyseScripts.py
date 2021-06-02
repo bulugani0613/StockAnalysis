@@ -11,6 +11,7 @@ import numpy as np
 stocklistFileHandler = open("ScriptList.txt")
 stocklist = set()
 
+#Adding script to a set for iteration
 for line in stocklistFileHandler:
     if len(line.strip()) > 0:
         stocklist.add(line.strip())
@@ -47,6 +48,8 @@ for stock in stocklist:
         ticker = yfinance.Ticker(stock)
         origdf = ticker.history(period = historyDuration)
         df = origdf.copy()
+        
+        #Calculating the values for EMA - 12, EMA - 26, MACD Hist, SignalMACD, Slope of Close, EMA - 12, EMA - 26, MACDHist and SignalMACD
         df['12EMA'] = df.Close.ewm(span=12, adjust=False).mean()
         df['26EMA'] = df.Close.ewm(span=26, adjust=False).mean()
         df['MACDHist'] = df['12EMA'] - df['26EMA'] 
@@ -58,7 +61,9 @@ for stock in stocklist:
         df['MACDHistSlope'] = df['MACDHist'].diff()
         df['SignalMACDSlope'] = df['SignalMACD'].diff()
 
+        #Calculating the ADX for the stock 
         # TR
+        
         alpha = 1/13
 
         adxdf = origdf.copy()
