@@ -126,21 +126,20 @@ for stock in stocklist:
 
 
         df['PositiveIndicator'] = 0
-        df['PositiveIndicator'] = df['PositiveIndicator'] + df['CloseSlope'].apply(lambda x: 1 if x > 0 else 0)
-        df['PositiveIndicator'] = df['PositiveIndicator'] + df['12EMASlope'].apply(lambda x: 1 if x > 0 else 0)
-        df['PositiveIndicator'] = df['PositiveIndicator'] + df['26EMASlope'].apply(lambda x: 1 if x > 0 else 0)
-        df['PositiveIndicator'] = df['PositiveIndicator'] + df['FastMACDSlope'].apply(lambda x: 1 if x > 0 else 0)
-        df['PositiveIndicator'] = df['PositiveIndicator'] + df['SignalMACDSlope'].apply(lambda x: 1 if x > 0 else 0)
-        df['PositiveIndicator'] = df['PositiveIndicator'] + df['MACDHistSlope'].apply(lambda x: 1 if x > 0 else 0)
-        df['PositiveIndicator'] = df['PositiveIndicator'] + df['ADXSlope'].apply(lambda x: 1 if x > 0 else 0)
-        df['PositiveIndicator'] = df['PositiveIndicator'] + df['RSI'].apply(lambda x: 1 if x < 30 else 0)
-
+        
+        #When the FASTMACD is Greater than SignalMACD and FASTMACD is less than 0, an ideal condition to buy. The indicator will be 2. 
+        df['PositiveIndicator'] = np.where((df['12EMASlope'] > df['26EMASlope']),1,0)
+        df['PositiveIndicator'] = df['PositiveIndicator'] + df['12EMASlope'].apply(lambda x: 1 if x < 0 else 0)
+        
+        StockSuggestion = "NA"
         lastRow = df.shape[0]
         currentStockValues = df.iloc[lastRow-1:]
+        if currentStockValues['FastMACD'][0] > currentStockValues['SignalMACD'][0] and  currentStockValues['FastMACD'][0] < 0:
+            StockSuggestion = "Buy"
         
         #analysisResult = pd.DataFrame(columns = ['Stock', 'Close', '12EMA', '26EMA', 'FastMACD', 'SignalMACD', 'MACDHist', 'ADX', 'RSI', 'CloseSlope', '12EMASlope', '26EMASlope', 'FastMACDSlope', 'SignalMACDSlope', 'ADXSlope', 'PositiveIndicator'])
 
-        analysisResult = analysisResult.append( {'Stock' : stock, 'Close' : currentStockValues['Close'][0], '12EMA': currentStockValues['12EMA'][0], '26EMA': currentStockValues['26EMA'][0], 'FastMACD': currentStockValues['FastMACD'][0], 'SignalMACD': currentStockValues['SignalMACD'][0], 'MACDHist' : currentStockValues['MACDHist'][0], 'ADX': currentStockValues['ADX'][0], 'RSI': currentStockValues['RSI'][0], 'CloseSlope': currentStockValues['CloseSlope'][0], '12EMASlope': currentStockValues['12EMASlope'][0], '26EMASlope': currentStockValues['26EMASlope'][0],  'FastMACDSlope': currentStockValues['FastMACDSlope'][0], 'SignalMACDSlope': currentStockValues['SignalMACDSlope'][0], 'MACDHistSlope' : currentStockValues['MACDHistSlope'][0],'ADXSlope': currentStockValues['ADXSlope'][0], 'PositiveIndicator' : currentStockValues['PositiveIndicator'][0]}, ignore_index = True)
+        analysisResult = analysisResult.append( {'Stock' : stock, 'Close' : currentStockValues['Close'][0], '12EMA': currentStockValues['12EMA'][0], '26EMA': currentStockValues['26EMA'][0], 'FastMACD': currentStockValues['FastMACD'][0], 'SignalMACD': currentStockValues['SignalMACD'][0], 'MACDHist' : currentStockValues['MACDHist'][0], 'ADX': currentStockValues['ADX'][0], 'RSI': currentStockValues['RSI'][0], 'CloseSlope': currentStockValues['CloseSlope'][0], '12EMASlope': currentStockValues['12EMASlope'][0], '26EMASlope': currentStockValues['26EMASlope'][0],  'FastMACDSlope': currentStockValues['FastMACDSlope'][0], 'SignalMACDSlope': currentStockValues['SignalMACDSlope'][0], 'MACDHistSlope' : currentStockValues['MACDHistSlope'][0],'ADXSlope': currentStockValues['ADXSlope'][0], 'PositiveIndicator' : StockSuggestion}, ignore_index = True)
     except:
         print("Oops!", sys.exc_info()[0], "occurred while processing for stock ", stock, ". Proceeding to next stock")  
 
