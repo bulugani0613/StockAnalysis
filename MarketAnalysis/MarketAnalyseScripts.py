@@ -133,7 +133,7 @@ for stock in stocklist:
         df['PositiveIndicator'] = df['PositiveIndicator'] + df['SignalMACDSlope'].apply(lambda x: 1 if x > 0 else 0)
         df['PositiveIndicator'] = df['PositiveIndicator'] + df['MACDHistSlope'].apply(lambda x: 1 if x > 0 else 0)
         df['PositiveIndicator'] = df['PositiveIndicator'] + df['ADXSlope'].apply(lambda x: 1 if x > 0 else 0)
-        df['PositiveIndicator'] = df['PositiveIndicator'] + df['RSI'].apply(lambda x: 1 if x < 15 else 0)
+        df['PositiveIndicator'] = df['PositiveIndicator'] + df['RSI'].apply(lambda x: 1 if x < 30 else 0)
 
         lastRow = df.shape[0]
         currentStockValues = df.iloc[lastRow-1:]
