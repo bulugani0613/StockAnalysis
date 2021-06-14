@@ -5,10 +5,12 @@ from datetime import datetime
 import os 
 from os import path
 import numpy as np
+import requests
 
 
 #ScriptList contains the list of script requiring analysis 
-stocklistFileHandler = open("ScriptList.txt")
+print('Enter your filename:')
+stocklistFileHandler = open(input())
 stocklist = set()
 
 #Adding script to a set for iteration
@@ -40,13 +42,33 @@ def rma(x, n, y0):
     a = (n-1) / n
     ak = a**np.arange(len(x)-1, -1, -1)
     return np.r_[np.full(n, np.nan), y0, np.cumsum(ak * x) / ak / n + y0 * a**np.arange(1, len(x)+1)]
+    
+def getStockData(stock):
+    url = "https://priceapi.moneycontrol.com/techCharts/techChartController/history?symbol=" + stock + "&resolution=1D&from=1588996056&to=1623124080"
+    response = requests.get(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/12.246"})
+    data = response.json()
+    df = pd.DataFrame(columns = ["TimeStamp", "Date", "Open", "Close", "High", "Low", "Volume"])
+    df['TimeStamp'] = data.get('t')
+    df['Open'] = data.get('o')
+    df['Close'] = data.get('c')
+    df['High'] = data.get('h')
+    df['Low'] = data.get('l')
+    df['Volume'] = data.get('v')
+    df['Date'] = df['TimeStamp'].apply(lambda x: getDate(x))
+    df.set_index("Date", inplace = True)
+    return df
+    
+def getDate(timestampint):
+    timestamp = datetime.fromtimestamp(timestampint)
+    return timestamp.strftime('%Y-%m-%d')
 
 #For each stock the data is retrieved and analysis is performed. 
 for stock in stocklist:
     print('Processing ', stock)
     try:
-        ticker = yfinance.Ticker(stock)
-        origdf = ticker.history(period = historyDuration)
+        #ticker = yfinance.Ticker(stock)
+        #origdf = ticker.history(period = historyDuration)=
+        origdf = getStockData(stock)
         df = origdf.copy()
         
         #Calculating the values for EMA - 12, EMA - 26, MACD, SignalMACD, Slope of Close, EMA - 12, EMA - 26, FastMACD and SignalMACD
@@ -119,7 +141,7 @@ for stock in stocklist:
         rsidf['loss'] = -rsidf.change.mask(rsidf.change > 0, -0.0)
         rsidf['avg_gain'] = rma(rsidf.gain[n+1:].to_numpy(), n, np.nansum(rsidf.gain.to_numpy()[:n+1])/n)
         rsidf['avg_loss'] = rma(rsidf.loss[n+1:].to_numpy(), n, np.nansum(rsidf.loss.to_numpy()[:n+1])/n)
-        rsidf['rs'] = rsidf.avg_gain / rsidf.avg_loss
+        rsidf['rs'] = rsidf['avg_gain'].divide(rsidf.avg_loss)
         rsidf['Rsi_14'] = 100 - (100 / (1 + rsidf.rs))
         
         df['RSI'] = rsidf['Rsi_14']
@@ -134,14 +156,28 @@ for stock in stocklist:
         StockSuggestion = "NA"
         lastRow = df.shape[0]
         currentStockValues = df.iloc[lastRow-1:]
-        if currentStockValues['FastMACD'][0] > currentStockValues['SignalMACD'][0] and  currentStockValues['FastMACD'][0] < 0:
+        
+        if currentStockValues['RSI'][0] < 30:
+            StockSuggestion = "Strong Buy"
+        elif currentStockValues['RSI'][0] < 40:
             StockSuggestion = "Buy"
+        elif currentStockValues['RSI'][0] > 80:
+            StockSuggestion = "Strong Sell"
+        elif currentStockValues['RSI'][0] > 65:
+            StockSuggestion = "Sell"    
+        else:
+            StockSuggestion = "Undecided"
+        
         
         #analysisResult = pd.DataFrame(columns = ['Stock', 'Close', '12EMA', '26EMA', 'FastMACD', 'SignalMACD', 'MACDHist', 'ADX', 'RSI', 'CloseSlope', '12EMASlope', '26EMASlope', 'FastMACDSlope', 'SignalMACDSlope', 'ADXSlope', 'BuyIndicator'])
-
+        
         analysisResult = analysisResult.append( {'Stock' : stock, 'Close' : currentStockValues['Close'][0], '12EMA': currentStockValues['12EMA'][0], '26EMA': currentStockValues['26EMA'][0], 'FastMACD': currentStockValues['FastMACD'][0], 'SignalMACD': currentStockValues['SignalMACD'][0], 'MACDHist' : currentStockValues['MACDHist'][0], 'ADX': currentStockValues['ADX'][0], 'RSI': currentStockValues['RSI'][0], 'CloseSlope': currentStockValues['CloseSlope'][0], '12EMASlope': currentStockValues['12EMASlope'][0], '26EMASlope': currentStockValues['26EMASlope'][0],  'FastMACDSlope': currentStockValues['FastMACDSlope'][0], 'SignalMACDSlope': currentStockValues['SignalMACDSlope'][0], 'MACDHistSlope' : currentStockValues['MACDHistSlope'][0],'ADXSlope': currentStockValues['ADXSlope'][0], 'BuyIndicator' : StockSuggestion}, ignore_index = True)
-    except:
-        print("Oops!", sys.exc_info()[0], "occurred while processing for stock ", stock, ". Proceeding to next stock")  
+        
+    except Exception as e:
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        print("Oops!", sys.exc_info()[0], "occurred while processing for stock ", stock, ". Proceeding to next stock. Error is in ", exc_type, fname, exc_tb.tb_lineno)  
+        
 
     df.to_csv("./" + folderExt + "/" +stock+str(fileExt) + ".csv")
 analysisResult.to_csv("AnalysisResult" + str(fileExt) + ".csv")
