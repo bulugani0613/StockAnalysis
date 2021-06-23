@@ -6,6 +6,7 @@ import os
 from os import path
 import numpy as np
 import requests
+import time
 
 
 #ScriptList contains the list of script requiring analysis 
@@ -43,8 +44,8 @@ def rma(x, n, y0):
     ak = a**np.arange(len(x)-1, -1, -1)
     return np.r_[np.full(n, np.nan), y0, np.cumsum(ak * x) / ak / n + y0 * a**np.arange(1, len(x)+1)]
     
-def getStockData(stock):
-    url = "https://priceapi.moneycontrol.com/techCharts/techChartController/history?symbol=" + stock + "&resolution=1D&from=1588996056&to=1623124080"
+def getStockData(stock, currenttime):
+    url = "https://priceapi.moneycontrol.com/techCharts/techChartController/history?symbol=" + stock + "&resolution=1D&from=1588996056&to="+str(currenttime)
     response = requests.get(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/12.246"})
     data = response.json()
     df = pd.DataFrame(columns = ["TimeStamp", "Date", "Open", "Close", "High", "Low", "Volume"])
@@ -68,7 +69,8 @@ for stock in stocklist:
     try:
         #ticker = yfinance.Ticker(stock)
         #origdf = ticker.history(period = historyDuration)=
-        origdf = getStockData(stock)
+        milliseconds = int(round(time.time() * 1000))
+        origdf = getStockData(stock,milliseconds)
         df = origdf.copy()
         
         #Calculating the values for EMA - 12, EMA - 26, MACD, SignalMACD, Slope of Close, EMA - 12, EMA - 26, FastMACD and SignalMACD
